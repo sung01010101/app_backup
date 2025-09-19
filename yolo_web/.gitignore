@@ -10,3 +10,6 @@ __pycache__/
 
 # Runtime PIDs
 *.pid
+
+# yolo modules
+*.pt

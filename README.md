@@ -14,7 +14,7 @@ Two Flask services:
 ## First-time setup
 1) Make scripts executable
 ```
-chmod +x scripts/*.sh
+sudo chmod +x scripts/*.sh
 ```
 
 2) Create virtual environments and install requirements
@@ -57,7 +57,7 @@ Open http://localhost:5003
 ## Useful endpoints
 - rviz_web
   - `/api/tf/frames`, `/api/tf/transforms`, `/api/robot/pose`
-  - YOLO proxy: `/api/yolo/status`, `/api/yolo/stats` (defaults to port 5001, adjust in code if needed)
+  - YOLO proxy: `/api/yolo/status`, `/api/yolo/stats`
 - yolo_web
   - Video: `/video_feed`
   - Stats: `/api/stats`
