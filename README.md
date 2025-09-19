@@ -15,7 +15,8 @@ Two Flask services:
 1) Make scripts executable
 ```
 chmod +x build_envs.sh create_rviz_web.sh create_yolo_web.sh \
-  rviz_web/start_rviz_web.sh yolo_web/start_yolo_web.sh
+  rviz_web/start_rviz_web.sh rviz_web/stop_rviz_web.sh \
+  yolo_web/start_yolo_web.sh yolo_web/stop_yolo_web.sh
 ```
 
 2) Create virtual environments and install requirements
@@ -44,12 +45,22 @@ Default port: 5004
 ```
 Open http://localhost:5004
 
+To stop:
+```
+./stop_yolo_web.sh
+```
+
 ### Start RVIZ web UI (rviz_web)
 Default port: 5003
 ```
 ./start_rviz_web.sh
 ```
 Open http://localhost:5003
+
+To stop:
+```
+./stop_rviz_web.sh
+```
 
 ## Useful endpoints
 - rviz_web
