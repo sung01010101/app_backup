@@ -40,11 +40,7 @@ yolo_web/.venv-py3.11/bin/python -V
 ### Start YOLO service (yolo_web)
 Default port: 5004
 ```
-cd yolo_web
-source .venv-py3.11/bin/activate
-python app.py
-# or use the helper script
-# ./start_yolo_web.sh
+./start_yolo_web.sh
 ```
 Open http://localhost:5004
 
@@ -55,14 +51,7 @@ Note: rviz_web proxies YOLO video from http://localhost:5001 by default. To inte
 ### Start RVIZ web UI (rviz_web)
 Default port: 5003
 ```
-# Source ROS 2 first
-auth source /opt/ros/jazzy/setup.bash
-
-cd rviz_web
-source .venv-py3.12/bin/activate
-python app.py
-# or use the helper script (auto-detects venv)
-# ./start_rviz_web.sh
+./start_rviz_web.sh
 ```
 Open http://localhost:5003
 
