@@ -1,0 +1,2623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROS2 Map Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;                                                                                                                                                                                               
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-family: Arial Black, sans-serif;
+        }
+        
+        h1 {
+            color: #c72828;
+            text-align: center;
+            margin-bottom: 30px;
+            font-style: italic
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+        
+        select, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .map-container {
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: #fff;
+            position: relative;
+            max-height: 700px;
+        }
+        
+        .map-display {
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            user-select: none;
+            max-width: 60vw;
+            margin: 0 auto;
+        }
+        
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0.3;
+            display: none;
+        }
+        
+        .grid-canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: center;
+            pointer-events: none;
+        }
+        
+        .map-image {
+            max-width: none;
+            max-height: none;
+            border: 1px solid #ccc;
+            cursor: grab;
+            will-change: transform;
+            backface-visibility: hidden;
+            transform: translateZ(0);
+        }
+        
+        .map-image:active {
+            cursor: grabbing;
+        }
+        
+        .map-image.dragging {
+            transition: none;
+        }
+        
+        .map-image:not(.dragging) {
+            transition: transform 0.1s ease-out;
+        }
+        
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            margin: 10px;
+        }
+        
+        .placeholder {
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 4px;
+            margin: 10px;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .zoom-button {
+            padding: 6px 12px;
+            margin: 2px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            min-width: 30px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .zoom-button:hover {
+            background-color: #0056b3;
+        }
+        
+        .zoom-button:active {
+            transform: scale(0.95);
+        }
+        
+        .zoom-level {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            padding: 2px 4px;
+            background-color: rgba(240, 240, 240, 0.8);
+            border-radius: 2px;
+            font-family: monospace;
+        }
+        
+        .scale-meter {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .scale-bar {
+            width: 100px;
+            height: 4px;
+            background-color: #333;
+            margin: 4px 0 2px 0;
+            position: relative;
+        }
+        
+        .scale-bar::before,
+        .scale-bar::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 8px;
+            background-color: #333;
+            top: -2px;
+        }
+        
+        .scale-bar::before {
+            left: 0;
+        }
+        
+        .scale-bar::after {
+            right: 0;
+        }
+        
+        .scale-text {
+            text-align: center;
+            color: #333;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .tf-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .tf-status {
+            margin-bottom: 15px;
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-indicator {
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-indicator.connected {
+            color: #4caf50;
+        }
+        
+        .status-indicator.disconnected {
+            color: #f44336;
+        }
+        
+        .tf-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        
+        .tf-frames, .tf-transforms {
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 3px;
+        }
+        
+        .tf-frames h4, .tf-transforms h4 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        
+        .frame-item {
+            padding: 4px 8px;
+            margin: 2px 0;
+            background-color: #fff;
+            border-radius: 2px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .transform-item {
+            padding: 8px;
+            margin: 4px 0;
+            background-color: #fff;
+            border-radius: 3px;
+            border-left: 3px solid #2196f3;
+        }
+        
+        .transform-header {
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 4px;
+        }
+        
+        .transform-data {
+            font-family: monospace;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .transform-translation, .transform-rotation {
+            margin: 2px 0;
+        }
+        
+        /* Robot position styles */
+        .robot-dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #ff4444;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            box-shadow: 0 0 6px rgba(255, 68, 68, 0.6);
+            pointer-events: none;
+        }
+        
+        .robot-trail {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        .robot-plan {
+            position: absolute;
+            pointer-events: none;
+            z-index: 60;
+        }
+        
+        .robot-heading {
+            position: absolute;
+            width: 20px;
+            height: 2px;
+            background-color: #ff4444;
+            transform-origin: left center;
+            z-index: 99;
+            pointer-events: none;
+        }
+        
+        /* Goal position styles */
+        .goal-marker {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 12px solid #00aa00;
+            transform: translate(-50%, -100%);
+            z-index: 101;
+            pointer-events: none;
+            filter: drop-shadow(0 2px 4px rgba(0, 170, 0, 0.6));
+        }
+        
+        .goal-heading {
+            position: absolute;
+            width: 24px;
+            height: 2px;
+            background-color: #00aa00;
+            transform-origin: left center;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        /* YOLO Integration Styles */
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .yolo-section {
+            background-color: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .yolo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .yolo-header h3 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .yolo-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #dc3545;
+        }
+        
+        .status-dot.connected {
+            background-color: #28a745;
+        }
+        
+        .yolo-video-container {
+            position: relative;
+            background-color: #000;
+            border-radius: 5px;
+            overflow: hidden;
+            min-height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .yolo-video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        
+        .yolo-placeholder {
+            color: #6c757d;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        .detection-info {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: rgba(0, 123, 255, 0.1);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .detection-count {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        /* Navigation Poses Styles */
+        .pose-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            pointer-events: none;
+        }
+        
+        .pose-marker.init-pose {
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 12px solid #007bff;
+        }
+        
+        .pose-marker.goal-pose {
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 12px solid #dc3545;
+        }
+        
+        .pose-marker.waypoint {
+            width: 10px;
+            height: 10px;
+            background-color: #28a745;
+            border: 2px solid white;
+            border-radius: 50%;
+        }
+        
+        .pose-arrow {
+            position: absolute;
+            width: 20px;
+            height: 2px;
+            background-color: #28a745;
+            z-index: 201;
+            pointer-events: none;
+            border-radius: 1px;
+        }
+        
+        .pose-arrow::after {
+            content: '';
+            position: absolute;
+            right: -2px;
+            top: -2px;
+            width: 0;
+            height: 0;
+            border-left: 6px solid #28a745;
+            border-top: 3px solid transparent;
+            border-bottom: 3px solid transparent;
+        }
+    
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #333;
+        }
+        
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #999;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            color: #666;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #ddd;
+            text-align: right;
+        }
+        
+        .pose-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .pose-option-button {
+            padding: 12px 15px;
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .pose-option-button:hover {
+            background-color: #e9ecef;
+            border-color: #007bff;
+        }
+        
+        .pose-option-button:active {
+            transform: scale(0.98);
+        }
+        
+        .pose-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .pose-coordinates {
+            font-size: 12px;
+            color: #666;
+            font-family: monospace;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Robot Control</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="mapSelect">Select Map:</label>
+                <select id="mapSelect">
+                    <option value="">Choose a map...</option>
+                    {% for map in maps %}
+                    <option value="{{ map.name }}">{{ map.name }}</option>
+                    {% endfor %}
+                </select>
+                <button id="loadMapBtn" onclick="loadMap()" disabled>Load Map</button>
+                <button id="gridToggleBtn" onclick="toggleGrid()" disabled>Show Grid</button>
+            </div>
+            <div class="control-group">
+                <label for="tfToggle">ROS2 TF:</label>
+                <button id="tfToggleBtn" onclick="toggleTF()">Show TF</button>
+                <button id="robotPlanBtn" onclick="toggleRobotPlan()" disabled>Show Plan</button>
+                <button id="setInitPoseBtn" onclick="showInitPoseMenu()" disabled>Set Init Pose</button>
+            </div>
+            <div class="control-group">
+                <label for="goalPose">Navigation:</label>
+                <button id="addGoalPoseBtn" onclick="showGoalPoseMenu()" disabled>Add Waypoint</button>
+                <button id="startNavigationBtn" onclick="startNavigation()" disabled>Start Navigation</button>
+                <button id="cancelNavigationBtn" onclick="cancelNavigation()" disabled>Cancel Navigation</button>
+                <button id="clearWaypointsBtn" onclick="clearWaypoints()" disabled>Clear Waypoints</button>
+                <span id="waypointCounter" style="margin-left: 10px; font-weight: bold; color: #666;">Waypoints: 0</span>
+            </div>
+            <div class="control-group">
+                <label for="yoloToggle">Obstacle Detection:</label>
+                <button id="yoloToggleBtn" onclick="toggleYolo()">Enable</button>
+                <span id="yoloPortInput" style="display: none;">
+                    <input type="number" id="yoloPort" value="5001" min="1" max="65535" style="width: 80px;">
+                    <button onclick="connectYolo()">Connect</button>
+                </span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="map-container">
+                    <div class="zoom-controls" id="zoomControls" style="display: none;">
+                        <button class="zoom-button" onclick="zoomIn()">+</button>
+                        <button class="zoom-button" onclick="zoomOut()">-</button>
+                        <button class="zoom-button" onclick="resetZoom()">Reset</button>
+                        <div class="zoom-level" id="zoomLevel">100%</div>
+                    </div>
+                    
+                    <div class="scale-meter" id="scaleMeter" style="display: none;">
+                        <div class="scale-bar" id="scaleBar"></div>
+                        <div class="scale-text" id="scaleText">1 m</div>
+                    </div>
+                    
+                    <div class="map-display" id="mapDisplay">
+                        <div class="grid-overlay" id="gridOverlay">
+                            <canvas class="grid-canvas" id="gridCanvas"></canvas>
+                        </div>
+                        <div class="placeholder">Select a map and click "Load Map" to begin visualization</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="yolo-section" id="yoloSection" style="display: none;">
+                    <div class="yolo-header">
+                        <div class="yolo-status">
+                            <div class="status-dot" id="yoloStatusDot"></div>
+                            <span id="yoloStatusText">Disconnected</span>
+                        </div>
+                    </div>
+                    <div class="yolo-video-container" id="yoloVideoContainer">
+                        <div class="yolo-placeholder">Not connected</div>
+                    </div>
+                    <div class="detection-info" id="detectionInfo" style="display: none;">
+                        <div>Status: <span id="detectionStatus">Waiting...</span></div>
+                        <div>Persons detected: <span class="detection-count" id="personCount">0</span></div>
+                        <div>FPS: <span id="detectionFPS">--</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tf-info" id="tfInfo" style="display: none;">
+            <h3>ROS2 Transform (TF) Information</h3>
+            <div class="tf-status" id="tfStatus">
+                <span class="status-indicator" id="tfStatusIndicator">●</span>
+                <span id="tfStatusText">Disconnected</span>
+            </div>
+            <div class="tf-content">
+                <div class="tf-frames" id="tfFrames">
+                    <h4>Available Frames:</h4>
+                    <div id="framesList">No frames available</div>
+                </div>
+                <div class="tf-transforms" id="tfTransforms">
+                    <h4>Current Transforms:</h4>
+                    <div id="transformsList">No transforms available</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Initial Pose Selection Modal -->
+        <div id="initPoseModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Select Initial Pose</h3>
+                    <span class="close" onclick="closeInitPoseMenu()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>Choose a pose to set as the robot's initial position:</p>
+                    <div id="initPoseOptions" class="pose-options">
+                        <!-- Pose options will be populated here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button onclick="closeInitPoseMenu()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goal Pose Selection Modal -->
+        <div id="goalPoseModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add Navigation Waypoint</h3>
+                    <span class="close" onclick="closeGoalPoseMenu()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>Choose a pose to add as a navigation waypoint:</p>
+                    <div id="goalPoseOptions" class="pose-options">
+                        <!-- Pose options will be populated here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button onclick="closeGoalPoseMenu()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+    <script>
+        let currentZoom = 1;
+        let mapImage = null;
+        let mapResolution = 0.05; // Default resolution in meters per pixel
+        let gridVisible = false;
+        let gridCanvas = null;
+        let gridContext = null;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let mapOffsetX = 0;
+        let mapOffsetY = 0;
+        let startOffsetX = 0;
+        let startOffsetY = 0;
+        
+        // Map origin for coordinate transformation
+        let mapOrigin = [-10, -10, 0]; // Default, will be updated when map loads
+        
+        // TF-related variables
+        let tfVisible = false;
+        let tfConnected = false;
+        let socket = null;
+        
+        // ROS-related variables (keeping roslibjs for potential future use)
+        let robotPosition = { x: 0, y: 0, theta: 0 };
+        let robotDot = null;
+        let robotHeading = null;
+        let robotPlan = [];
+        let robotPlanVisible = false;
+        let robotPlanCanvas = null;
+        let robotPlanContext = null;
+        
+        // Goal-related variables
+        let goalPosition = { x: 0, y: 0, theta: 0 };
+        let goalMarker = null;
+        let goalHeading = null;
+        let hasGoal = false;
+        
+        // YOLO-related variables
+        let yoloEnabled = false;
+        let yoloConnected = false;
+        let yoloPort = 5001;
+        let yoloVideoElement = null;
+        let yoloCheckInterval = null;
+        let detectionCount = 0;
+        let detectionFPS = 0;
+        
+        // Navigation Poses variables
+        let currentNavPoses = {};
+        let poseMarkers = [];
+        
+       
+        // Initialize SocketIO
+        socket = io();
+        
+        // TF Socket events
+        socket.on('tf_update', function(data) {
+            updateTFDisplay(data);
+            
+            // Update robot position from TF data
+            if (data.robot_pose) {
+                robotPosition = {
+                    x: data.robot_pose.x,
+                    y: data.robot_pose.y,
+                    theta: data.robot_pose.theta
+                };
+                // Always try to update visualization when we get new pose data
+                updateRobotVisualization();
+            }
+            
+            // Update goal position from TF data
+            if (data.goal_pose) {
+                goalPosition = {
+                    x: data.goal_pose.x,
+                    y: data.goal_pose.y,
+                    theta: data.goal_pose.theta
+                };
+                hasGoal = true;
+                updateGoalVisualization();
+            }
+        });
+        
+        // Plan Socket events
+        socket.on('plan_update', function(data) {
+            if (data.plan && robotPlanVisible) {
+                robotPlan = data.plan;
+                updatePlanCanvas();
+            }
+        });
+        
+        socket.on('tf_error', function(data) {
+            console.error('TF Error:', data.error);
+            updateTFStatus(false, data.error);
+        });
+        
+        socket.on('waypoint_update', function(data) {
+            console.log('Waypoint update received:', data);
+            updateWaypointCounter(data.waypoint_count);
+            if (data.message) {
+           console.log('Waypoint notification:', data.message)
+    }
+            }
+        );
+        
+        socket.on('navigation_complete', function(data) {
+            console.log('Navigation completed:', data);
+            
+            // Update UI based on navigation completion
+            const startNavigationBtn = document.getElementById('startNavigationBtn');
+            const cancelNavigationBtn = document.getElementById('cancelNavigationBtn');
+            
+            if (startNavigationBtn) {
+                if (data.success) {
+                    // On successful completion, disable start button since waypoints are cleared
+                    startNavigationBtn.disabled = true;
+                    startNavigationBtn.textContent = 'Start Navigation';
+                } else {
+                    // On failure, keep start button enabled so user can retry
+                    startNavigationBtn.disabled = false;
+                    startNavigationBtn.textContent = 'Start Navigation';
+                }
+            }
+            if (cancelNavigationBtn) {
+                cancelNavigationBtn.disabled = true;
+            }
+            
+            // Show completion message
+            if (data.success) {
+                alert(`🎉 ${data.message}\n\n✅ All waypoints have been automatically cleared.\n💡 Add new waypoints to start another navigation.`);
+            } else {
+                alert(`⚠️ ${data.message}\n💡 You can retry navigation or clear waypoints to start over.`);
+            }
+        });
+        
+        // Enable/disable load button based on selection
+        document.getElementById('mapSelect').addEventListener('change', function() {
+            const loadBtn = document.getElementById('loadMapBtn');
+            const gridBtn = document.getElementById('gridToggleBtn');
+            const selectedValue = this.value;
+            
+            console.log('Map selection changed to:', selectedValue);
+            
+            loadBtn.disabled = !selectedValue;
+            if (!selectedValue) {
+                gridBtn.disabled = true;
+                gridBtn.textContent = 'Show Grid';
+            }
+            
+            // Clear any previous error messages when a new map is selected
+            if (selectedValue) {
+                const mapDisplay = document.getElementById('mapDisplay');
+                if (mapDisplay.innerHTML.includes('error') || mapDisplay.innerHTML.includes('Error')) {
+                    mapDisplay.innerHTML = '<div class="placeholder">Select "Load Map" to display the chosen map</div>';
+                }
+            }
+        });
+        
+        async function loadMap() {
+            const mapSelect = document.getElementById('mapSelect');
+            const mapName = mapSelect.value;
+            
+            if (!mapName) {
+                alert('Please select a map first.');
+                return;
+            }
+            
+            const mapDisplay = document.getElementById('mapDisplay');
+            const zoomControls = document.getElementById('zoomControls');
+            const loadBtn = document.getElementById('loadMapBtn');
+            
+            // Show loading state
+            mapDisplay.innerHTML = '<div class="loading">Loading map...</div>';
+            zoomControls.style.display = 'none';
+            loadBtn.disabled = true;
+            loadBtn.textContent = 'Loading...';
+            
+            try {
+                console.log(`Loading map: ${mapName}`);
+                const response = await fetch(`/api/map/${mapName}`);
+                console.log('Response status:', response.status);
+                
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Map data received:', data);
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (response.ok && data.image_data) {
+                    // Display map image
+                    mapImage = document.createElement('img');
+                    mapImage.src = `data:image/png;base64,${data.image_data}`;
+                    mapImage.className = 'map-image';
+                    mapImage.alt = `Map: ${mapName}`;
+                    
+                    // Add error handling for image loading
+                    mapImage.onerror = function() {
+                        console.error('Failed to load map image');
+                        mapDisplay.innerHTML = '<div class="error">Failed to load map image. The image data may be corrupted.</div>';
+                        return;
+                    };
+                    
+                    // Add load event listener to ensure robot visualization updates after image loads
+                    mapImage.onload = function() {
+                        console.log('Map image loaded successfully');
+                        // Update robot visualization if we have position data
+                        if (tfVisible && tfConnected && robotPosition) {
+                            setTimeout(() => {
+                                updateRobotVisualization();
+                            }, 50);
+                        }
+                    };
+                    
+                    // Add drag event listeners
+                    addDragListeners(mapImage);
+                    
+                    mapDisplay.innerHTML = '';
+                    
+                    // Re-add grid overlay (it was cleared with innerHTML)
+                    const gridOverlay = document.createElement('div');
+                    gridOverlay.className = 'grid-overlay';
+                    gridOverlay.id = 'gridOverlay';
+                    gridOverlay.style.display = gridVisible ? 'block' : 'none';
+                    
+                    gridCanvas = document.createElement('canvas');
+                    gridCanvas.className = 'grid-canvas';
+                    gridCanvas.id = 'gridCanvas';
+                    gridOverlay.appendChild(gridCanvas);
+                    mapDisplay.appendChild(gridOverlay);
+                    
+                    mapDisplay.appendChild(mapImage);
+                    
+                    // Initialize grid context
+                    gridContext = gridCanvas.getContext('2d');
+                    
+                    // Enable grid toggle button and restore its state
+                    const gridBtn = document.getElementById('gridToggleBtn');
+                    gridBtn.disabled = false;
+                    gridBtn.textContent = gridVisible ? 'Hide Grid' : 'Show Grid';
+                    
+                    // Show zoom controls
+                    zoomControls.style.display = 'block';
+                    
+                    // Store map resolution and show scale meter
+                    mapResolution = data.map_info.resolution || 0.05;
+                    showScaleMeter();
+                    
+                    resetZoom();
+                    
+                    // Update grid if it was visible before switching maps
+                    if (gridVisible) {
+                        updateGrid();
+                    }
+                    
+                    // Reset and update robot visualization for new map
+                    if (robotDot && robotHeading) {
+                        // Remove existing robot elements
+                        robotDot.remove();
+                        robotHeading.remove();
+                        robotDot = null;
+                        robotHeading = null;
+                    }
+                    
+                    // Reset goal visualization for new map
+                    if (goalMarker && goalHeading) {
+                        goalMarker.remove();
+                        goalHeading.remove();
+                        goalMarker = null;
+                        goalHeading = null;
+                    }
+                    
+                    // Clear robot plan for new map
+                    if (robotPlanCanvas) {
+                        clearRobotPlan();
+                        if (robotPlanVisible) {
+                            initializeRobotPlan();
+                        }
+                    }
+                    
+                    // Update robot visualization if we have position data
+                    if (tfVisible && tfConnected) {
+                        // Force an immediate update of robot position
+                        setTimeout(() => {
+                            updateRobotVisualization();
+                        }, 100); // Small delay to ensure map is fully loaded
+                    }
+                    
+                    // Store map origin for robot position calculation
+                    storeMapOrigin(data.map_info);
+                    
+                    // Update robot visualization with new map if robot position is available
+                    if (tfConnected && (robotPosition.x !== 0 || robotPosition.y !== 0)) {
+                        updateRobotVisualization();
+                    }
+                    
+                    // Load navigation poses for this map
+                    await loadNavPoses(mapName);
+                    
+                    console.log('Map loaded successfully');
+                    alert(`Map "${mapName}" loaded successfully!`);
+                    
+                } else {
+                    console.error('Map loading failed:', data);
+                    const errorMsg = data.error || 'Unknown error occurred';
+                    mapDisplay.innerHTML = `<div class="error">Error: ${errorMsg}</div>`;
+                    alert(`Failed to load map: ${errorMsg}`);
+                }
+                
+            } catch (error) {
+                console.error('Error loading map:', error);
+                const errorMsg = `Failed to load map: ${error.message}`;
+                mapDisplay.innerHTML = `<div class="error">${errorMsg}</div>`;
+                alert(errorMsg);
+            } finally {
+                // Restore button state
+                loadBtn.disabled = false;
+                loadBtn.textContent = 'Load Map';
+            }
+        }
+        
+        function storeMapOrigin(mapInfo) {
+            // Store map origin for robot position calculation
+            if (mapInfo.origin) {
+                mapOrigin = mapInfo.origin;
+            }
+        }
+        
+        function zoomIn() {
+            if (currentZoom < 5) { // Limit maximum zoom
+                currentZoom *= 1.2;
+                applyZoom();
+                startNavigationBtn.disabled = false;
+            }
+        }
+        
+        function zoomOut() {
+            if (currentZoom > 0.1) { // Limit minimum zoom
+                currentZoom /= 1.2;
+                applyZoom();
+                startNavigationBtn.disabled = false;
+            }
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            mapOffsetX = 0;
+            mapOffsetY = 0;
+            applyZoom();
+            startNavigationBtn.disabled = false;
+        }
+        
+        function applyZoom() {
+            if (mapImage) {
+                mapImage.style.transform = `translate(${mapOffsetX}px, ${mapOffsetY}px) scale(${currentZoom})`;
+                mapImage.style.transformOrigin = 'center';
+                
+                // Update zoom controls opacity based on zoom limits
+                updateZoomButtonStates();
+                
+                // Update scale meter
+                updateScaleMeter();
+                
+                // Update grid if visible
+                if (gridVisible) {
+                    updateGrid();
+                }
+                
+                // Update robot visualization
+                if (tfConnected && robotDot) {
+                    updateRobotVisualization();
+                }
+                
+                // Update goal visualization
+                if (tfConnected && hasGoal && goalMarker) {
+                    updateGoalVisualization();
+                }
+                
+                // Update robot plan
+                if (robotPlanVisible) {
+                    updatePlanCanvas();
+                }
+                
+                // Update pose markers
+                if (Object.keys(currentNavPoses).length > 0) {
+                    updatePoseMarkers();
+                }
+               
+            }
+        }
+        
+        function addDragListeners(image) {
+            // Mouse down event
+            image.addEventListener('mousedown', function(e) {
+                if (e.button !== 0) return; // Only handle left mouse button
+                e.preventDefault();
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                startOffsetX = mapOffsetX;
+                startOffsetY = mapOffsetY;
+                
+                // Add dragging class to disable transitions
+                image.classList.add('dragging');
+                image.style.cursor = 'grabbing';
+                
+                // Disable text selection during drag
+                document.body.style.userSelect = 'none';
+            });
+            
+            // Mouse move event (attach to document to handle mouse leaving image)
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                mapOffsetX = startOffsetX + deltaX;
+                mapOffsetY = startOffsetY + deltaY;
+                
+                // Direct style update for maximum performance
+                image.style.transform = `translate(${mapOffsetX}px, ${mapOffsetY}px) scale(${currentZoom})`;
+                
+                // Update grid during dragging if visible
+                if (gridVisible) {
+                    updateGrid();
+                }
+                
+                // Update robot visualization during dragging
+                if (tfConnected && robotDot) {
+                    updateRobotVisualization();
+                }
+                
+                // Update goal visualization during dragging
+                if (tfConnected && hasGoal && goalMarker) {
+                    updateGoalVisualization();
+                }
+                
+                // Update robot plan during dragging
+                if (robotPlanVisible) {
+                    updatePlanCanvas();
+                }
+                
+                // Update pose markers during dragging
+                if (Object.keys(currentNavPoses).length > 0) {
+                    updatePoseMarkers();
+                }
+               
+            }, { passive: true });
+            
+            // Mouse up event (attach to document)
+            document.addEventListener('mouseup', function(e) {
+                if (isDragging) {
+                    isDragging = false;
+                    
+                    // Remove dragging class to re-enable transitions
+                    image.classList.remove('dragging');
+                    image.style.cursor = 'grab';
+                    
+                    // Re-enable text selection
+                    document.body.style.userSelect = '';
+                    
+                    // Update button states only when dragging ends
+                    updateZoomButtonStates();
+                }
+            });
+            
+            // Prevent context menu on right click
+            image.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+            });
+            
+            // Prevent default drag behavior
+            image.addEventListener('dragstart', function(e) {
+                e.preventDefault();
+            });
+        }
+        
+        function updateZoomButtonStates() {
+            const zoomInBtn = document.querySelector('.zoom-button:nth-child(1)');
+            const zoomOutBtn = document.querySelector('.zoom-button:nth-child(2)');
+            const zoomLevel = document.getElementById('zoomLevel');
+            
+            if (zoomInBtn && zoomOutBtn) {
+                zoomInBtn.style.opacity = currentZoom >= 5 ? '0.5' : '1';
+                zoomOutBtn.style.opacity = currentZoom <= 0.1 ? '0.5' : '1';
+            }
+            
+            if (zoomLevel) {
+                zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+            }
+        }
+        
+        function showScaleMeter() {
+            const scaleMeter = document.getElementById('scaleMeter');
+            if (scaleMeter) {
+                scaleMeter.style.display = 'block';
+                updateScaleMeter();
+            }
+        }
+        
+        function updateScaleMeter() {
+            const scaleBar = document.getElementById('scaleBar');
+            const scaleText = document.getElementById('scaleText');
+            
+            if (!scaleBar || !scaleText) return;
+            
+            // Calculate the real-world distance represented by 100px at current zoom
+            const pixelDistance = 100; // Fixed pixel width of scale bar
+            const realDistance = (pixelDistance * mapResolution) / currentZoom;
+            
+            // Choose appropriate scale and unit
+            let displayDistance, unit;
+            
+            if (realDistance >= 1000) {
+                displayDistance = Math.round(realDistance / 1000 * 10) / 10;
+                unit = 'km';
+            } else if (realDistance >= 1) {
+                displayDistance = Math.round(realDistance * 10) / 10;
+                unit = 'm';
+            } else if (realDistance >= 0.01) {
+                displayDistance = Math.round(realDistance * 100);
+                unit = 'cm';
+            } else {
+                displayDistance = Math.round(realDistance * 1000);
+                unit = 'mm';
+            }
+            
+            // For better readability, adjust to nice round numbers
+            const niceNumbers = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+            let bestDistance = displayDistance;
+            let bestDiff = Infinity;
+            
+            for (let nice of niceNumbers) {
+                const diff = Math.abs(displayDistance - nice);
+                if (diff < bestDiff && nice <= displayDistance * 2) {
+                    bestDistance = nice;
+                    bestDiff = diff;
+                }
+            }
+            
+            // Calculate the actual pixel width for the nice round number
+            let actualPixelWidth;
+            if (unit === 'km') {
+                actualPixelWidth = (bestDistance * 1000 * currentZoom) / mapResolution;
+            } else if (unit === 'm') {
+                actualPixelWidth = (bestDistance * currentZoom) / mapResolution;
+            } else if (unit === 'cm') {
+                actualPixelWidth = (bestDistance * 0.01 * currentZoom) / mapResolution;
+            } else { // mm
+                actualPixelWidth = (bestDistance * 0.001 * currentZoom) / mapResolution;
+            }
+            
+            // Limit scale bar width to reasonable bounds
+            actualPixelWidth = Math.max(20, Math.min(200, actualPixelWidth));
+            
+            // Update scale bar width and text
+            scaleBar.style.width = actualPixelWidth + 'px';
+            scaleText.textContent = bestDistance + ' ' + unit;
+        }
+        
+        function toggleGrid() {
+            const gridBtn = document.getElementById('gridToggleBtn');
+            const gridOverlay = document.getElementById('gridOverlay');
+            
+            gridVisible = !gridVisible;
+            
+            if (gridVisible) {
+                gridOverlay.style.display = 'block';
+                gridBtn.textContent = 'Hide Grid';
+                updateGrid();
+            } else {
+                gridOverlay.style.display = 'none';
+                gridBtn.textContent = 'Show Grid';
+            }
+        }
+        
+        function updateGrid() {
+            if (!gridCanvas || !gridContext || !mapImage) return;
+            
+            // Get map display dimensions
+            const mapDisplay = document.getElementById('mapDisplay');
+            const displayRect = mapDisplay.getBoundingClientRect();
+            
+            // Set canvas size to match display area
+            gridCanvas.width = displayRect.width;
+            gridCanvas.height = displayRect.height;
+            
+            // Position canvas to fill the entire display area (no transform on canvas itself)
+            gridCanvas.style.transform = 'translate(-50%, -50%)';
+            
+            // Clear canvas
+            gridContext.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+            
+            // Calculate grid spacing in screen pixels (1 meter in map coordinates, scaled by zoom)
+            const gridSpacing = (1.0 / mapResolution) * currentZoom; // pixels per meter at current zoom
+            
+            // Set grid line style
+            gridContext.strokeStyle = '#606060';
+            gridContext.lineWidth = 2; // Keep line width constant in screen pixels
+            gridContext.globalAlpha = 0.5; // Semi-transparent lines
+            
+            // Calculate the center of the display
+            const centerX = gridCanvas.width / 2;
+            const centerY = gridCanvas.height / 2;
+            
+            // Calculate the map center position in screen coordinates
+            const mapCenterX = centerX + mapOffsetX;
+            const mapCenterY = centerY + mapOffsetY;
+            
+            // Calculate map origin position in screen coordinates
+            // Map origin in pixel coordinates relative to map center
+            const originPixelX = -mapOrigin[0] / mapResolution;
+            const originPixelY = mapImage.naturalHeight + mapOrigin[1] / mapResolution;
+            
+            // Convert to screen coordinates
+            const originScreenX = mapCenterX + (originPixelX - mapImage.naturalWidth / 2) * currentZoom;
+            const originScreenY = mapCenterY + (originPixelY - mapImage.naturalHeight / 2) * currentZoom;
+            
+            // Calculate grid bounds to cover the visible area
+            const margin = gridSpacing * 2; // Extra margin to ensure coverage
+            const startX = Math.floor((0 - originScreenX - margin) / gridSpacing) * gridSpacing + originScreenX;
+            const startY = Math.floor((0 - originScreenY - margin) / gridSpacing) * gridSpacing + originScreenY;
+            const endX = Math.ceil((gridCanvas.width - originScreenX + margin) / gridSpacing) * gridSpacing + originScreenX;
+            const endY = Math.ceil((gridCanvas.height - originScreenY + margin) / gridSpacing) * gridSpacing + originScreenY;
+            
+            gridContext.beginPath();
+            
+            // Draw vertical lines (aligned to map coordinate system)
+            for (let x = startX; x <= endX; x += gridSpacing) {
+                if (x >= 0 && x <= gridCanvas.width) {
+                    gridContext.moveTo(x, 0);
+                    gridContext.lineTo(x, gridCanvas.height);
+                }
+            }
+            
+            // Draw horizontal lines (aligned to map coordinate system)
+            for (let y = startY; y <= endY; y += gridSpacing) {
+                if (y >= 0 && y <= gridCanvas.height) {
+                    gridContext.moveTo(0, y);
+                    gridContext.lineTo(gridCanvas.width, y);
+                }
+            }
+            
+            gridContext.stroke();
+        }
+        
+        async function refreshMaps() {
+            try {
+                console.log('Refreshing maps list...');
+                const response = await fetch('/api/maps');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const maps = await response.json();
+                console.log('Available maps:', maps);
+                
+                const mapSelect = document.getElementById('mapSelect');
+                mapSelect.innerHTML = '<option value="">Choose a map...</option>';
+                
+                if (maps && maps.length > 0) {
+                    maps.forEach(map => {
+                        const option = document.createElement('option');
+                        option.value = map.name;
+                        option.textContent = map.name;
+                        mapSelect.appendChild(option);
+                    });
+                    console.log(`Loaded ${maps.length} maps`);
+                } else {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No maps available';
+                    option.disabled = true;
+                    mapSelect.appendChild(option);
+                    console.warn('No maps found');
+                }
+                
+            } catch (error) {
+                console.error('Failed to refresh maps:', error);
+                const mapSelect = document.getElementById('mapSelect');
+                mapSelect.innerHTML = '<option value="">Error loading maps</option>';
+                alert(`Failed to load maps: ${error.message}`);
+            }
+        }
+
+
+function updateWaypointMarkers() {
+    // remove old markers
+    waypointMarkers.forEach(m => m.remove());
+    waypointMarkers = [];
+    if (!mapImage || !mapImage.complete || currentWaypoints.length === 0) return;
+    const mapDisplay = document.getElementById('mapDisplay');
+    const displayRect = mapDisplay.getBoundingClientRect();
+
+    currentWaypoints.forEach((wp, i) => {
+        const pixelX = (wp.position[0] - mapOrigin[0]) / mapResolution;
+        const pixelY = mapImage.naturalHeight - (wp.position[1] - mapOrigin[1]) / mapResolution;
+        const x = displayRect.width/2 + (pixelX - mapImage.naturalWidth/2) * currentZoom + mapOffsetX;
+        const y = displayRect.height/2 + (pixelY - mapImage.naturalHeight/2) * currentZoom + mapOffsetY;
+
+        const marker = document.createElement('div');
+        marker.className = 'pose-marker active-waypoint';
+        marker.style.left = x + 'px';
+        marker.style.top = y + 'px';
+        marker.title = `Waypoint ${i+1}: ${wp.name} (${wp.position[0].toFixed(2)}, ${wp.position[1].toFixed(2)})`;
+
+        // number label
+        const label = document.createElement('span');
+        label.textContent = (i+1).toString();
+        label.style.position = 'absolute';
+        label.style.left = '50%';
+        label.style.top = '50%';
+        label.style.transform = 'translate(-50%,-50%)';
+        label.style.color = 'white';
+        label.style.fontSize = '10px';
+        marker.appendChild(label);
+
+        mapDisplay.appendChild(marker);
+        waypointMarkers.push(marker);
+
+        // optional: draw orientation arrow if wp.orientation exists (same conversion as poses)
+    });
+}
+        
+        function updateRobotVisualization() {
+            if (!mapImage || !mapImage.complete || !mapImage.naturalWidth || !mapImage.naturalHeight) {
+                // Map not fully loaded yet, retry in a moment
+                setTimeout(() => {
+                    if (mapImage && mapImage.complete) {
+                        updateRobotVisualization();
+                    }
+                }, 50);
+                return;
+            }
+            
+            const mapDisplay = document.getElementById('mapDisplay');
+            if (!mapDisplay) return;
+            
+            // Convert ROS coordinates to map pixel coordinates
+            const pixelX = (robotPosition.x - mapOrigin[0]) / mapResolution;
+            const pixelY = mapImage.naturalHeight - (robotPosition.y - mapOrigin[1]) / mapResolution;
+            
+            // Create or update robot dot
+            if (!robotDot) {
+                robotDot = document.createElement('div');
+                robotDot.className = 'robot-dot';
+                mapDisplay.appendChild(robotDot);
+                
+                robotHeading = document.createElement('div');
+                robotHeading.className = 'robot-heading';
+                mapDisplay.appendChild(robotHeading);
+            }
+            
+            // Position the robot dot and heading indicator
+            const displayRect = mapDisplay.getBoundingClientRect();
+            
+            // Calculate the position relative to the map display
+            const dotX = displayRect.width / 2 + (pixelX - mapImage.naturalWidth / 2) * currentZoom + mapOffsetX;
+            const dotY = displayRect.height / 2 + (pixelY - mapImage.naturalHeight / 2) * currentZoom + mapOffsetY;
+            
+            robotDot.style.left = dotX + 'px';
+            robotDot.style.top = dotY + 'px';
+            
+            // Update heading indicator
+            robotHeading.style.left = dotX + 'px';
+            robotHeading.style.top = (dotY - 1) + 'px';
+            robotHeading.style.transform = `rotate(${-robotPosition.theta}rad) translateX(6px)`;
+        }
+        
+        function updateGoalVisualization() {
+            if (!mapImage || !mapImage.complete || !mapImage.naturalWidth || !mapImage.naturalHeight || !hasGoal) {
+                return;
+            }
+            
+            const mapDisplay = document.getElementById('mapDisplay');
+            if (!mapDisplay) return;
+            
+            // Convert ROS coordinates to map pixel coordinates
+            const pixelX = (goalPosition.x - mapOrigin[0]) / mapResolution;
+            const pixelY = mapImage.naturalHeight - (goalPosition.y - mapOrigin[1]) / mapResolution;
+            
+            // Create or update goal marker
+            if (!goalMarker) {
+                goalMarker = document.createElement('div');
+                goalMarker.className = 'goal-marker';
+                goalMarker.title = 'Goal Position';
+                mapDisplay.appendChild(goalMarker);
+                
+                goalHeading = document.createElement('div');
+                goalHeading.className = 'goal-heading';
+                mapDisplay.appendChild(goalHeading);
+            }
+            
+            // Position the goal marker and heading indicator
+            const displayRect = mapDisplay.getBoundingClientRect();
+            
+            // Calculate the position relative to the map display
+            const markerX = displayRect.width / 2 + (pixelX - mapImage.naturalWidth / 2) * currentZoom + mapOffsetX;
+            const markerY = displayRect.height / 2 + (pixelY - mapImage.naturalHeight / 2) * currentZoom + mapOffsetY;
+            
+            goalMarker.style.left = markerX + 'px';
+            goalMarker.style.top = markerY + 'px';
+            
+            // Update heading indicator
+            goalHeading.style.left = markerX + 'px';
+            goalHeading.style.top = (markerY - 1) + 'px';
+            goalHeading.style.transform = `rotate(${-goalPosition.theta}rad) translateX(8px)`;
+        }
+        
+        function toggleRobotPlan() {
+            const planBtn = document.getElementById('robotPlanBtn');
+            
+            robotPlanVisible = !robotPlanVisible;
+            
+            if (robotPlanVisible) {
+                planBtn.textContent = 'Hide Plan';
+                initializeRobotPlan();
+                // Start receiving plan updates
+                socket.emit('start_plan_updates');
+            } else {
+                planBtn.textContent = 'Show Plan';
+                clearRobotPlan();
+                // Stop receiving plan updates
+                socket.emit('stop_plan_updates');
+            }
+        }
+        
+        function initializeRobotPlan() {
+            const mapDisplay = document.getElementById('mapDisplay');
+            
+            if (!robotPlanCanvas) {
+                robotPlanCanvas = document.createElement('canvas');
+                robotPlanCanvas.className = 'robot-plan';
+                robotPlanCanvas.style.position = 'absolute';
+                robotPlanCanvas.style.top = '0';
+                robotPlanCanvas.style.left = '0';
+                robotPlanCanvas.style.pointerEvents = 'none';
+                robotPlanCanvas.style.zIndex = '60';
+                mapDisplay.appendChild(robotPlanCanvas);
+                
+                robotPlanContext = robotPlanCanvas.getContext('2d');
+            }
+            
+            // Clear existing plan
+            robotPlan = [];
+            updatePlanCanvas();
+        }
+        
+        function clearRobotPlan() {
+            if (robotPlanCanvas) {
+                robotPlanCanvas.remove();
+                robotPlanCanvas = null;
+                robotPlanContext = null;
+            }
+            robotPlan = [];
+        }
+        
+        function debugRobotPosition() {
+            console.log('Robot Position Debug:', {
+                robotPosition: robotPosition,
+                goalPosition: goalPosition,
+                hasGoal: hasGoal,
+                mapOrigin: mapOrigin,
+                mapResolution: mapResolution,
+                mapImage: mapImage ? {
+                    complete: mapImage.complete,
+                    naturalWidth: mapImage.naturalWidth,
+                    naturalHeight: mapImage.naturalHeight
+                } : null,
+                robotDot: robotDot ? 'exists' : 'null',
+                goalMarker: goalMarker ? 'exists' : 'null',
+                tfVisible: tfVisible,
+                tfConnected: tfConnected
+            });
+        }
+        
+        // Expose debug function globally for console access
+        window.debugRobotPosition = debugRobotPosition;
+        
+        function updatePlanCanvas() {
+            if (!robotPlanCanvas || !robotPlanContext || !mapImage || 
+                !mapImage.complete || !mapImage.naturalWidth || !mapImage.naturalHeight) {
+                return;
+            }
+            
+            const mapDisplay = document.getElementById('mapDisplay');
+            const displayRect = mapDisplay.getBoundingClientRect();
+            
+            // Set canvas size
+            robotPlanCanvas.width = displayRect.width;
+            robotPlanCanvas.height = displayRect.height;
+            
+            // Clear canvas
+            robotPlanContext.clearRect(0, 0, robotPlanCanvas.width, robotPlanCanvas.height);
+            
+            if (robotPlan.length < 2) return;
+            
+            // Draw plan
+            robotPlanContext.strokeStyle = '#00aaff';
+            robotPlanContext.lineWidth = 3;
+            robotPlanContext.globalAlpha = 0.8;
+            robotPlanContext.beginPath();
+            
+            for (let i = 0; i < robotPlan.length; i++) {
+                const point = robotPlan[i];
+                const pixelX = (point.x - mapOrigin[0]) / mapResolution;
+                const pixelY = mapImage.naturalHeight - (point.y - mapOrigin[1]) / mapResolution;
+                
+                const dotX = displayRect.width / 2 + (pixelX - mapImage.naturalWidth / 2) * currentZoom + mapOffsetX;
+                const dotY = displayRect.height / 2 + (pixelY - mapImage.naturalHeight / 2) * currentZoom + mapOffsetY;
+                
+                if (i === 0) {
+                    robotPlanContext.moveTo(dotX, dotY);
+                } else {
+                    robotPlanContext.lineTo(dotX, dotY);
+                }
+            }
+            
+            robotPlanContext.stroke();
+            
+            // Draw waypoints as small circles
+            robotPlanContext.fillStyle = '#00aaff';
+            robotPlanContext.globalAlpha = 1.0;
+            for (let i = 0; i < robotPlan.length; i++) {
+                const point = robotPlan[i];
+                const pixelX = (point.x - mapOrigin[0]) / mapResolution;
+                const pixelY = mapImage.naturalHeight - (point.y - mapOrigin[1]) / mapResolution;
+                
+                const dotX = displayRect.width / 2 + (pixelX - mapImage.naturalWidth / 2) * currentZoom + mapOffsetX;
+                const dotY = displayRect.height / 2 + (pixelY - mapImage.naturalHeight / 2) * currentZoom + mapOffsetY;
+                
+                robotPlanContext.beginPath();
+                robotPlanContext.arc(dotX, dotY, 2, 0, 2 * Math.PI);
+                robotPlanContext.fill();
+            }
+        }
+
+        // TF Functions
+        function toggleTF() {
+            const tfBtn = document.getElementById('tfToggleBtn');
+            const tfInfo = document.getElementById('tfInfo');
+            const robotPlanBtn = document.getElementById('robotPlanBtn');
+            
+            tfVisible = !tfVisible;
+            
+            if (tfVisible) {
+                tfInfo.style.display = 'block';
+                tfBtn.textContent = 'Hide TF';
+                
+                // Start receiving TF updates
+                socket.emit('start_tf_updates');
+                refreshTF();
+            } else {
+                tfInfo.style.display = 'none';
+                tfBtn.textContent = 'Show TF';
+                robotPlanBtn.disabled = true;
+                
+                // Stop receiving TF updates
+                socket.emit('stop_tf_updates');
+                
+                // Clean up robot visualization when TF is disabled
+                if (robotDot) {
+                    robotDot.remove();
+                    robotDot = null;
+                }
+                if (robotHeading) {
+                    robotHeading.remove();
+                    robotHeading = null;
+                }
+                
+                // Clean up goal visualization when TF is disabled
+                if (goalMarker) {
+                    goalMarker.remove();
+                    goalMarker = null;
+                }
+                if (goalHeading) {
+                    goalHeading.remove();
+                    goalHeading = null;
+                }
+                hasGoal = false;
+            }
+        }
+        
+        async function refreshTF() {
+            try {
+                const [framesResponse, transformsResponse] = await Promise.all([
+                    fetch('/api/tf/frames'),
+                    fetch('/api/tf/transforms')
+                ]);
+                
+                if (framesResponse.ok && transformsResponse.ok) {
+                    const framesData = await framesResponse.json();
+                    const transformsData = await transformsResponse.json();
+                    
+                    updateTFFrames(framesData);
+                    updateTFTransforms(transformsData.transforms);
+                    updateTFStatus(true, 'Connected');
+                } else {
+                    updateTFStatus(false, 'Failed to fetch TF data');
+                }
+            } catch (error) {
+                console.error('Failed to refresh TF:', error);
+                updateTFStatus(false, error.message);
+            }
+        }
+        
+        function updateTFStatus(connected, message) {
+            const indicator = document.getElementById('tfStatusIndicator');
+            const text = document.getElementById('tfStatusText');
+            const robotPlanBtn = document.getElementById('robotPlanBtn');
+            
+            tfConnected = connected;
+            
+            if (connected) {
+                indicator.className = 'status-indicator connected';
+                text.textContent = message || 'Connected';
+                // Enable robot plan button when TF is connected
+                if (robotPlanBtn) {
+                    robotPlanBtn.disabled = false;
+                }
+            } else {
+                indicator.className = 'status-indicator disconnected';
+                text.textContent = message || 'Disconnected';
+                // Disable robot plan button when TF is disconnected
+                if (robotPlanBtn) {
+                    robotPlanBtn.disabled = true;
+                }
+            }
+        }
+        
+        function updateTFFrames(data) {
+            const framesList = document.getElementById('framesList');
+            
+            if (data.frames && data.frames.length > 0) {
+                framesList.innerHTML = data.frames.map(frame => 
+                    `<div class="frame-item">${frame}</div>`
+                ).join('');
+            } else {
+                framesList.innerHTML = '<div class="frame-item">No frames available</div>';
+            }
+        }
+        
+        function updateTFTransforms(transforms) {
+            const transformsList = document.getElementById('transformsList');
+            
+            if (transforms && Object.keys(transforms).length > 0) {
+                transformsList.innerHTML = Object.entries(transforms).map(([key, transform]) => {
+                    const t = transform.translation;
+                    const r = transform.rotation;
+                    return `
+                        <div class="transform-item">
+                            <div class="transform-header">${key}</div>
+                            <div class="transform-data">
+                                <div class="transform-translation">
+                                    Trans: x=${t.x.toFixed(3)}, y=${t.y.toFixed(3)}, z=${t.z.toFixed(3)}
+                                </div>
+                                <div class="transform-rotation">
+                                    Rot: x=${r.x.toFixed(3)}, y=${r.y.toFixed(3)}, z=${r.z.toFixed(3)}, w=${r.w.toFixed(3)}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                transformsList.innerHTML = '<div class="transform-item">No transforms available</div>';
+            }
+        }
+        
+        function updateTFDisplay(data) {
+            if (tfVisible) {
+                updateTFTransforms(data.transforms);
+                updateTFStatus(true, `Updated: ${new Date(data.timestamp * 1000).toLocaleTimeString()}`);
+                
+                // Show robot pose info if available
+                if (data.robot_pose) {
+                    updateRobotPoseInfo(data.robot_pose);
+                }
+                
+                // Show goal pose info if available
+                if (data.goal_pose) {
+                    updateGoalPoseInfo(data.goal_pose);
+                }
+            }
+        }
+        
+        function updateRobotPoseInfo(pose) {
+            // Find or create robot pose display in TF section
+            let robotPoseDiv = document.getElementById('robotPoseInfo');
+            if (!robotPoseDiv) {
+                robotPoseDiv = document.createElement('div');
+                robotPoseDiv.id = 'robotPoseInfo';
+                robotPoseDiv.innerHTML = '<h4>Robot Pose:</h4><div id="robotPoseData"></div>';
+                robotPoseDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+                robotPoseDiv.style.padding = '10px';
+                robotPoseDiv.style.borderRadius = '3px';
+                robotPoseDiv.style.marginTop = '10px';
+                
+                const tfContent = document.querySelector('.tf-content');
+                if (tfContent) {
+                    tfContent.appendChild(robotPoseDiv);
+                    // Adjust grid to accommodate robot pose
+                    tfContent.style.gridTemplateColumns = '1fr 1fr 1fr';
+                }
+            }
+            
+            const robotPoseData = document.getElementById('robotPoseData');
+            if (robotPoseData) {
+                robotPoseData.innerHTML = `
+                    <div style="font-family: monospace; font-size: 11px; color: #666;">
+                        <div>Frame: ${pose.frame_id} → ${pose.child_frame_id}</div>
+                        <div>Position: x=${pose.x.toFixed(3)}, y=${pose.y.toFixed(3)}</div>
+                        <div>Orientation: θ=${pose.theta.toFixed(3)} rad (${(pose.theta * 180 / Math.PI).toFixed(1)}°)</div>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateGoalPoseInfo(pose) {
+            // Find or create goal pose display in TF section
+            let goalPoseDiv = document.getElementById('goalPoseInfo');
+            if (!goalPoseDiv) {
+                goalPoseDiv = document.createElement('div');
+                goalPoseDiv.id = 'goalPoseInfo';
+                goalPoseDiv.innerHTML = '<h4>Goal Pose:</h4><div id="goalPoseData"></div>';
+                goalPoseDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+                goalPoseDiv.style.padding = '10px';
+                goalPoseDiv.style.borderRadius = '3px';
+                goalPoseDiv.style.marginTop = '10px';
+                
+                const tfContent = document.querySelector('.tf-content');
+                if (tfContent) {
+                    tfContent.appendChild(goalPoseDiv);
+                    // Adjust grid to accommodate goal pose (robot + goal + transforms)
+                    tfContent.style.gridTemplateColumns = '1fr 1fr 1fr 2fr';
+                }
+            }
+            
+            const goalPoseData = document.getElementById('goalPoseData');
+            if (goalPoseData) {
+                goalPoseData.innerHTML = `
+                    <div style="font-family: monospace; font-size: 11px; color: #666;">
+                        <div>Frame: ${pose.frame_id}</div>
+                        <div>Position: x=${pose.x.toFixed(3)}, y=${pose.y.toFixed(3)}</div>
+                        <div>Orientation: θ=${pose.theta.toFixed(3)} rad (${(pose.theta * 180 / Math.PI).toFixed(1)}°)</div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === '+' || e.key === '=') {
+                zoomIn();
+            } else if (e.key === '-') {
+                zoomOut();
+            } else if (e.key === '0') {
+                resetZoom();
+            }
+        });
+        
+        // Add mouse wheel zoom support
+        document.addEventListener('wheel', function(e) {
+            if (mapImage && e.target === mapImage) {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            }
+        }, { passive: false });
+        
+        // Navigation Poses functionality
+        async function loadNavPoses(mapName) {
+            try {
+                const response = await fetch(`/api/nav_poses/${mapName}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentNavPoses = data.nav_poses;
+                    updatePoseMarkers();
+                } else {
+                    // No nav poses available
+                    currentNavPoses = {};
+                    // Clear existing markers
+                    poseMarkers.forEach(marker => marker.remove());
+                    poseMarkers = [];
+                }
+            } catch (error) {
+                console.error('Error loading nav poses:', error);
+                currentNavPoses = {};
+                // Clear existing markers
+                poseMarkers.forEach(marker => marker.remove());
+                poseMarkers = [];
+                
+            }
+        }
+        
+        function updatePoseMarkers() {
+            // Clear existing markers
+            poseMarkers.forEach(marker => marker.remove());
+            poseMarkers = [];
+            
+            if (!mapImage || !mapImage.complete || Object.keys(currentNavPoses).length === 0) return;
+            
+            const mapDisplay = document.getElementById('mapDisplay');
+            
+            // Add markers for all poses
+            Object.entries(currentNavPoses).forEach(([poseId, poseData]) => {
+                const marker = document.createElement('div');
+                marker.className = 'pose-marker waypoint'; // Default to waypoint style
+                
+                // Calculate position
+                const pixelX = (poseData.position[0] - mapOrigin[0]) / mapResolution;
+                const pixelY = mapImage.naturalHeight - (poseData.position[1] - mapOrigin[1]) / mapResolution;
+                
+                const displayRect = mapDisplay.getBoundingClientRect();
+                const markerX = displayRect.width / 2 + (pixelX - mapImage.naturalWidth / 2) * currentZoom + mapOffsetX;
+                const markerY = displayRect.height / 2 + (pixelY - mapImage.naturalHeight / 2) * currentZoom + mapOffsetY;
+                
+                marker.style.left = markerX + 'px';
+                marker.style.top = markerY + 'px';
+                
+                // Add tooltip
+                marker.title = `${poseData.name} (${poseData.position[0].toFixed(2)}, ${poseData.position[1].toFixed(2)})`;
+                
+                mapDisplay.appendChild(marker);
+                poseMarkers.push(marker);
+                
+                // Create orientation arrow
+                if (poseData.orientation) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'pose-arrow';
+                    
+                    // Convert quaternion to yaw angle
+                    const qx = poseData.orientation[0];
+                    const qy = poseData.orientation[1];
+                    const qz = poseData.orientation[2];
+                    const qw = poseData.orientation[3];
+                    
+                    // Calculate yaw from quaternion
+                    const yaw = Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
+                    
+                    arrow.style.left = markerX + 'px';
+                    arrow.style.top = (markerY - 1) + 'px';
+                    arrow.style.transform = `rotate(${-yaw}rad) translateX(8px)`;
+                    arrow.style.transformOrigin = 'left center';
+                    
+                    // Add tooltip for orientation
+                    arrow.title = `${poseData.name} - Orientation: ${(yaw * 180 / Math.PI).toFixed(1)}°`;
+                    
+                    mapDisplay.appendChild(arrow);
+                    poseMarkers.push(arrow);
+                }
+            });
+            
+            // Enable/disable Set Init Pose button based on available poses
+            const setInitPoseBtn = document.getElementById('setInitPoseBtn');
+            if (setInitPoseBtn) {
+                setInitPoseBtn.disabled = Object.keys(currentNavPoses).length === 0;
+            }
+            
+            // Enable/disable Add Waypoint button based on available poses
+            const addGoalPoseBtn = document.getElementById('addGoalPoseBtn');
+            if (addGoalPoseBtn) {
+                addGoalPoseBtn.disabled = Object.keys(currentNavPoses).length === 0;
+            }
+            
+            // Initialize navigation buttons (they start disabled until waypoints are added)
+            const startNavigationBtn = document.getElementById('startNavigationBtn');
+            const clearWaypointsBtn = document.getElementById('clearWaypointsBtn');
+            const cancelNavigationBtn = document.getElementById('cancelNavigationBtn');
+            if (startNavigationBtn) {
+                startNavigationBtn.disabled = true; // Will be enabled when waypoints are added
+            }
+            if (clearWaypointsBtn) {
+                clearWaypointsBtn.disabled = true; // Will be enabled when waypoints are added
+            }
+            if (cancelNavigationBtn) {
+                cancelNavigationBtn.disabled = true; // Will be enabled only during active navigation
+            }
+        }
+        
+        function showInitPoseMenu() {
+            if (Object.keys(currentNavPoses).length === 0) {
+                alert('No navigation poses available for the current map.');
+                return;
+            }
+            
+            // Populate pose options
+            const poseOptionsContainer = document.getElementById('initPoseOptions');
+            poseOptionsContainer.innerHTML = '';
+            
+            Object.entries(currentNavPoses).forEach(([poseId, poseData]) => {
+                const poseButton = document.createElement('div');
+                poseButton.className = 'pose-option-button';
+                poseButton.onclick = () => selectInitialPose(poseId, poseData);
+                
+                poseButton.innerHTML = `
+                    <div class="pose-name">${poseData.name}</div>
+                    <div class="pose-coordinates">
+                        Position: (${poseData.position[0].toFixed(2)}, ${poseData.position[1].toFixed(2)}, ${poseData.position[2].toFixed(2)})<br>
+                        Orientation: [${poseData.orientation.map(o => o.toFixed(3)).join(', ')}]
+                    </div>
+                `;
+                
+                poseOptionsContainer.appendChild(poseButton);
+            });
+            
+            // Show the modal
+            document.getElementById('initPoseModal').style.display = 'flex';
+        }
+        
+        function closeInitPoseMenu() {
+            document.getElementById('initPoseModal').style.display = 'none';
+        }
+        
+        function selectInitialPose(poseId, poseData) {
+            // Close the modal first
+            closeInitPoseMenu();
+            
+            // Show loading state
+            const setInitPoseBtn = document.getElementById('setInitPoseBtn');
+            const originalText = setInitPoseBtn.textContent;
+            setInitPoseBtn.textContent = 'Setting...';
+            setInitPoseBtn.disabled = true;
+            
+            // Call the API to set initial pose
+            fetch('/api/navigation/set_initial_pose', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ pose: poseData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Initial pose set successfully!\nPose: ${poseData.name}\nPosition: (${poseData.position[0].toFixed(2)}, ${poseData.position[1].toFixed(2)})`);
+                    console.log('Initial pose set:', data);
+                } else {
+                    alert(`Failed to set initial pose: ${data.error}`);
+                    console.error('Error setting initial pose:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error setting initial pose:', error);
+                alert(`Failed to set initial pose: ${error.message}`);
+            })
+            .finally(() => {
+                // Restore button state
+                setInitPoseBtn.textContent = originalText;
+                setInitPoseBtn.disabled = Object.keys(currentNavPoses).length === 0;
+            });
+        }
+        
+        function showGoalPoseMenu() {
+            if (Object.keys(currentNavPoses).length === 0) {
+                alert('No navigation poses available for the current map.');
+                return;
+            }
+            
+            // Populate pose options
+            const poseOptionsContainer = document.getElementById('goalPoseOptions');
+            poseOptionsContainer.innerHTML = '';
+            
+            Object.entries(currentNavPoses).forEach(([poseId, poseData]) => {
+                const poseButton = document.createElement('div');
+                poseButton.className = 'pose-option-button';
+                poseButton.onclick = () => selectGoalPose(poseId, poseData);
+                
+                poseButton.innerHTML = `
+                    <div class="pose-name">${poseData.name}</div>
+                    <div class="pose-coordinates">
+                        Position: (${poseData.position[0].toFixed(2)}, ${poseData.position[1].toFixed(2)}, ${poseData.position[2].toFixed(2)})<br>
+                        Orientation: [${poseData.orientation.map(o => o.toFixed(3)).join(', ')}]
+                    </div>
+                `;
+                
+                poseOptionsContainer.appendChild(poseButton);
+            });
+            
+            // Show the modal
+            document.getElementById('goalPoseModal').style.display = 'flex';
+        }
+        
+        function closeGoalPoseMenu() {
+            document.getElementById('goalPoseModal').style.display = 'none';
+        }
+        
+        function selectGoalPose(poseId, poseData) {
+            // Close the modal first
+            closeGoalPoseMenu();
+            
+            // Show loading state
+            const addGoalPoseBtn = document.getElementById('addGoalPoseBtn');
+            const originalText = addGoalPoseBtn.textContent;
+            addGoalPoseBtn.textContent = 'Adding...';
+            addGoalPoseBtn.disabled = true;
+            
+            // Call the API to add waypoint
+            fetch('/api/navigation/add_goal_pose', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ pose: poseData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Waypoint added successfully!\nPose: ${poseData.name}\nPosition: (${poseData.position[0].toFixed(2)}, ${poseData.position[1].toFixed(2)})\nTotal waypoints: ${data.waypoint_count}`);
+                    console.log('Waypoint added:', data);
+                    
+                    // Update waypoint counter
+                    updateWaypointCounter(data.waypoint_count);
+                } else {
+                    alert(`Failed to add waypoint: ${data.error}`);
+                    console.error('Error adding waypoint:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error adding waypoint:', error);
+                alert(`Failed to add waypoint: ${error.message}`);
+            })
+            .finally(() => {
+                // Restore button state
+                addGoalPoseBtn.textContent = originalText;
+                addGoalPoseBtn.disabled = Object.keys(currentNavPoses).length === 0;
+            });
+        }
+        
+        function startNavigation() {
+            const startNavigationBtn = document.getElementById('startNavigationBtn');
+            const cancelNavigationBtn = document.getElementById('cancelNavigationBtn');
+            const originalText = startNavigationBtn.textContent;
+            startNavigationBtn.textContent = 'Starting...';
+            startNavigationBtn.disabled = true;
+            
+            // Call the API to start navigation
+            fetch('/api/navigation/start_navigation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Navigation started successfully!\nWaypoints: ${data.waypoint_count}\nRobot will traverse through all waypoints in sequence.`);
+                    console.log('Navigation started:', data);
+                    
+                    // Enable cancel button and update start button during navigation
+                    if (cancelNavigationBtn) {
+                        cancelNavigationBtn.disabled = false;
+                    }
+                    startNavigationBtn.textContent = 'Navigating...';
+                    startNavigationBtn.disabled = true;
+                } else {
+                    alert(`Failed to start navigation: ${data.error}`);
+                    console.error('Error starting navigation:', data.error);
+                    // Restore button state on error
+                    startNavigationBtn.textContent = originalText;
+                    startNavigationBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error starting navigation:', error);
+                alert(`Failed to start navigation: ${error.message}`);
+                // Restore button state on error
+                startNavigationBtn.textContent = originalText;
+                startNavigationBtn.disabled = false;
+            })
+            .finally(() => {
+                // Only restore text if still showing "Starting..." (navigation didn't start)
+                if (startNavigationBtn.textContent === 'Starting...') {
+                    startNavigationBtn.textContent = originalText;
+                }
+            });
+        }
+        
+        function cancelNavigation() {
+            if (!confirm('Are you sure you want to cancel the current navigation?')) {
+                return;
+            }
+            
+            const cancelNavigationBtn = document.getElementById('cancelNavigationBtn');
+            const startNavigationBtn = document.getElementById('startNavigationBtn');
+            const originalText = cancelNavigationBtn.textContent;
+            cancelNavigationBtn.textContent = 'Canceling...';
+            cancelNavigationBtn.disabled = true;
+            
+            // Call the API to cancel navigation
+            fetch('/api/navigation/cancel_navigation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Navigation canceled successfully!');
+                    console.log('Navigation canceled:', data);
+                    
+                    // Re-enable start navigation button
+                    if (startNavigationBtn) {
+                        startNavigationBtn.disabled = false;
+                    }
+                } else {
+                    alert(`Failed to cancel navigation: ${data.error}`);
+                    console.error('Error canceling navigation:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error canceling navigation:', error);
+                alert(`Failed to cancel navigation: ${error.message}`);
+            })
+            .finally(() => {
+                // Restore button state
+                cancelNavigationBtn.textContent = originalText;
+                cancelNavigationBtn.disabled = true; // Keep disabled until next navigation starts
+            });
+        }
+        
+        function clearWaypoints() {
+            if (!confirm('Are you sure you want to clear all waypoints?')) {
+                return;
+            }
+            
+            const clearWaypointsBtn = document.getElementById('clearWaypointsBtn');
+            const originalText = clearWaypointsBtn.textContent;
+            clearWaypointsBtn.textContent = 'Clearing...';
+            clearWaypointsBtn.disabled = true;
+            
+            // Call the API to clear waypoints
+            fetch('/api/navigation/clear_waypoints', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('All waypoints cleared successfully!');
+                    console.log('Waypoints cleared:', data);
+                    currentWaypoints = [];
+                updateWaypointMarkers();
+                updateWaypointCounter(0);
+                } else {
+                    alert(`Failed to clear waypoints: ${data.error}`);
+                    console.error('Error clearing waypoints:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing waypoints:', error);
+                alert(`Failed to clear waypoints: ${error.message}`);
+            })
+            .finally(() => {
+                // Restore button state
+                clearWaypointsBtn.textContent = originalText;
+                clearWaypointsBtn.disabled = false;
+            });
+        }
+        
+        function updateWaypointCounter(count) {
+            const counter = document.getElementById('waypointCounter');
+            if (counter) {
+                counter.textContent = `Waypoints: ${count}`;
+                
+                // Enable/disable navigation buttons based on waypoint count
+                const startNavigationBtn = document.getElementById('startNavigationBtn');
+                const clearWaypointsBtn = document.getElementById('clearWaypointsBtn');
+                const cancelNavigationBtn = document.getElementById('cancelNavigationBtn');
+                
+                if (startNavigationBtn) {
+                    // Start navigation button is enabled only when there are waypoints
+                    startNavigationBtn.disabled = count === 0;
+                }
+                if (clearWaypointsBtn) {
+                    // Clear waypoints button is enabled only when there are waypoints
+                    clearWaypointsBtn.disabled = count === 0;
+                }
+                if (cancelNavigationBtn) {
+                    // Cancel button is disabled by default, only enabled during active navigation
+                    cancelNavigationBtn.disabled = true;
+                }
+            }
+        }
+        
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const initModal = document.getElementById('initPoseModal');
+            const goalModal = document.getElementById('goalPoseModal');
+            if (event.target === initModal) {
+                closeInitPoseMenu();
+            }
+            if (event.target === goalModal) {
+                closeGoalPoseMenu();
+            }
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const initModal = document.getElementById('initPoseModal');
+                const goalModal = document.getElementById('goalPoseModal');
+                if (initModal.style.display === 'flex') {
+                    closeInitPoseMenu();
+                }
+                if (goalModal.style.display === 'flex') {
+                    closeGoalPoseMenu();
+                }
+            }
+        });
+        
+        // YOLO Integration Functions
+        function toggleYolo() {
+            yoloEnabled = !yoloEnabled;
+            const yoloSection = document.getElementById('yoloSection');
+            const yoloPortInput = document.getElementById('yoloPortInput');
+            const toggleBtn = document.getElementById('yoloToggleBtn');
+            
+            if (yoloEnabled) {
+                yoloSection.style.display = 'block';
+                yoloPortInput.style.display = 'inline';
+                toggleBtn.textContent = 'Disable YOLO';
+                toggleBtn.style.backgroundColor = '#dc3545';
+            } else {
+                yoloSection.style.display = 'none';
+                yoloPortInput.style.display = 'none';
+                toggleBtn.textContent = 'Enable YOLO';
+                toggleBtn.style.backgroundColor = '#007bff';
+                disconnectYolo();
+            }
+        }
+        
+        function connectYolo() {
+            const portInput = document.getElementById('yoloPort');
+            yoloPort = parseInt(portInput.value) || 5001;
+            
+            const videoContainer = document.getElementById('yoloVideoContainer');
+            const statusDot = document.getElementById('yoloStatusDot');
+            const statusText = document.getElementById('yoloStatusText');
+            const detectionInfo = document.getElementById('detectionInfo');
+            
+            // Clear existing content
+            videoContainer.innerHTML = '';
+            
+            // First check if YOLO service is available
+            statusText.textContent = 'Connecting...';
+            
+            fetch(`/api/yolo/status/${yoloPort}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'connected') {
+                        // YOLO service is available, create video element
+                        yoloVideoElement = document.createElement('img');
+                        yoloVideoElement.className = 'yolo-video';
+                        yoloVideoElement.alt = 'YOLO Detection Stream';
+                        
+                        // Use the proxy endpoint to avoid CORS issues
+                        yoloVideoElement.src = '/api/yolo/video_feed';
+                        
+                        yoloVideoElement.onload = function() {
+                            yoloConnected = true;
+                            statusDot.classList.add('connected');
+                            statusText.textContent = `Connected (Port: ${yoloPort})`;
+                            detectionInfo.style.display = 'block';
+                            
+                            // Start monitoring detection status
+                            startYoloMonitoring();
+                        };
+                        
+                        yoloVideoElement.onerror = function() {
+                            yoloConnected = false;
+                            statusDot.classList.remove('connected');
+                            statusText.textContent = `Video Stream Error (Port: ${yoloPort})`;
+                            videoContainer.innerHTML = `
+                                <div class="yolo-placeholder">
+                                    Video stream error from YOLO service on port ${yoloPort}<br>
+                                    Check the service logs for more information.
+                                </div>
+                            `;
+                            detectionInfo.style.display = 'none';
+                        };
+                        
+                        videoContainer.appendChild(yoloVideoElement);
+                        
+                    } else {
+                        // YOLO service is not available
+                        yoloConnected = false;
+                        statusDot.classList.remove('connected');
+                        statusText.textContent = `Connection Failed (Port: ${yoloPort})`;
+                        videoContainer.innerHTML = `
+                            <div class="yolo-placeholder">
+                                Failed to connect to YOLO service on port ${yoloPort}<br>
+                                Error: ${data.error || 'Service unavailable'}<br>
+                                Make sure the YOLO service is running on the specified port.
+                            </div>
+                        `;
+                        detectionInfo.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking YOLO status:', error);
+                    yoloConnected = false;
+                    statusDot.classList.remove('connected');
+                    statusText.textContent = `Connection Error`;
+                    videoContainer.innerHTML = `
+                        <div class="yolo-placeholder">
+                            Network error while connecting to YOLO service<br>
+                            Please check your connection and try again.
+                        </div>
+                    `;
+                    detectionInfo.style.display = 'none';
+                });
+        }
+        
+        function disconnectYolo() {
+            if (yoloVideoElement) {
+                yoloVideoElement.src = '';
+                yoloVideoElement = null;
+            }
+            
+            if (yoloCheckInterval) {
+                clearInterval(yoloCheckInterval);
+                yoloCheckInterval = null;
+            }
+            
+            yoloConnected = false;
+            const statusDot = document.getElementById('yoloStatusDot');
+            const statusText = document.getElementById('yoloStatusText');
+            const videoContainer = document.getElementById('yoloVideoContainer');
+            const detectionInfo = document.getElementById('detectionInfo');
+            
+            statusDot.classList.remove('connected');
+            statusText.textContent = 'Disconnected';
+            videoContainer.innerHTML = '<div class="yolo-placeholder">YOLO service disconnected</div>';
+            detectionInfo.style.display = 'none';
+        }
+        
+        function startYoloMonitoring() {
+            // Monitor YOLO service status and update UI with real detection data
+            const detectionStatus = document.getElementById('detectionStatus');
+            const personCount = document.getElementById('personCount');
+            const fpsDisplay = document.getElementById('detectionFPS');
+            
+            detectionStatus.textContent = 'Active';
+            
+            // Update connection status and detection stats periodically
+            yoloCheckInterval = setInterval(() => {
+                // Fetch real detection statistics
+                fetch(`/api/yolo/stats/${yoloPort}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            // If there's an error, fall back to service status check
+                            return fetch(`/api/yolo/status/${yoloPort}`)
+                                .then(response => response.json())
+                                .then(statusData => {
+                                    if (statusData.status === 'connected') {
+                                        detectionStatus.textContent = 'Active (No Stats)';
+                                        fpsDisplay.textContent = '--';
+                                        personCount.textContent = '--';
+                                    } else {
+                                        detectionStatus.textContent = 'Service Issues';
+                                        fpsDisplay.textContent = '--';
+                                        personCount.textContent = '0';
+                                    }
+                                });
+                        } else {
+                            // Update with real detection data
+                            if (data.active) {
+                                detectionStatus.textContent = 'Active';
+                                personCount.textContent = data.person_count || 0;
+                                fpsDisplay.textContent = data.fps ? data.fps.toFixed(1) : '0.0';
+                            } else {
+                                detectionStatus.textContent = 'Inactive';
+                                personCount.textContent = '0';
+                                fpsDisplay.textContent = '0.0';
+                            }
+                            
+                            // Check if video element is still working
+                            if (yoloVideoElement && yoloVideoElement.complete && yoloVideoElement.naturalHeight !== 0) {
+                                // Video is loading properly - keep current status
+                            } else if (data.active) {
+                                detectionStatus.textContent = 'Video Issues';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching YOLO stats:', error);
+                        detectionStatus.textContent = 'Connection Issues';
+                        fpsDisplay.textContent = '--';
+                        personCount.textContent = '0';
+                    });
+            }, 1000); // Update every second for more responsive stats
+        }
+        
+        
+        // Initialize YOLO section as hidden and refresh maps on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing...');
+            
+            const yoloSection = document.getElementById('yoloSection');
+            if (yoloSection) {
+                yoloSection.style.display = 'none';
+            }
+            
+            // Load available maps on page initialization
+            console.log('Loading available maps...');
+            refreshMaps();
+            
+            // Ensure buttons are in correct initial state
+            const loadBtn = document.getElementById('loadMapBtn');
+            const mapSelect = document.getElementById('mapSelect');
+            if (loadBtn && mapSelect) {
+                loadBtn.disabled = !mapSelect.value;
+                console.log('Initial button state set');
+            }
+        });
+    </script>
+</body>
+</html>

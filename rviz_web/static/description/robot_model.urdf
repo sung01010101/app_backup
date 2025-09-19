@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<robot name="deliver_robot">
+
+    <!-- base_link是整台車的原點  -->
+    <link name="base_link"/>
+    
+    <!-- chassis底盤基本外觀設定  -->
+    <link name="chassis">
+        <visual>
+            <geometry>
+                <box size="0.3 0.52 0.05"/>
+            </geometry>
+            <!-- z如果為0車體會崁在地板中間 rpy是 row pitch yaw  -->
+            <origin xyz="0 0 0.1" rpy="0 0 0"/>
+        </visual>
+    </link>
+    <!-- 設定原點與 chassis 的父子TF關係  -->
+    <joint name="base_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="chassis"/>
+        <origin xyz="0 0 0.0125" rpy="0 0 0"/>
+    </joint>
+
+    <!-- 右輪的基本設定  -->
+    <link name="right_wheel">
+        <visual>
+            <geometry>
+                <cylinder radius="0.025" length="0.04" />
+            </geometry>
+            <origin xyz="0 0 0" rpy="1.57 0 0" />
+            <material name="blue">
+                <color rgba="0.0 0.0 0.5 1" /> 
+            </material>
+        </visual>
+    </link>
+    <!-- 右輪與車底盤的關節設定  -->
+    <joint name="right_wheel_joint" type="continuous">
+        <parent link="base_link"/>
+        <child link="right_wheel"/>
+        <origin xyz="0 -0.21 0.0125" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+
+    <!-- 左輪的基本設定  -->
+    <link name="left_wheel">
+        <visual>
+            <geometry>
+                <cylinder radius="0.025" length="0.04" />
+            </geometry>
+            <origin xyz="0 0 0" rpy="1.57 0 0" />
+            <material name="blue">
+                <color rgba="0.0 0.0 0.5 1" /> 
+            </material>
+        </visual>
+    </link>
+    <!-- 左輪與車底盤的關節設定  -->
+    <joint name="left_wheel_joint" type="continuous">
+        <parent link="base_link"/>
+        <child link="left_wheel"/>
+        <origin xyz="0 0.21 0.0125" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+
+    <!-- lidar的基本設定  -->
+    <link name="laser">
+      	<visual>
+            <geometry>
+                <cylinder length="0.05" radius="0.03" />
+            </geometry>
+            <origin xyz="0 0 0" />
+            <material name="gray">
+    	        <color rgba="0.2 0.2 0.2 1" />
+  	        </material>
+        </visual>
+    </link>
+	<!-- lidar與車底盤的關節設定  -->
+	<joint name="laser_joint" type="fixed">
+        <parent link="chassis" />
+        <child link="laser" />  <!-- rplidar發布名稱 -->
+        <origin xyz="0 0 0.2" rpy="0 0 -3.141592" />
+    </joint>
+
+</robot>
