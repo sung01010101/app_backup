@@ -48,9 +48,6 @@ Open http://localhost:5004
 ### Start/Stop RVIZ web UI (rviz_web)
 Default port: 5003
 ```
-# Ensure ROS 2 is sourced in your shell if needed
-# source /opt/ros/jazzy/setup.bash
-
 ./scripts/start_rviz_web.sh
 # ... later
 ./scripts/stop_rviz_web.sh
