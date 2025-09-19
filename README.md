@@ -20,7 +20,7 @@ cd ./app_backup
 
 2) Make scripts executable
 ```
-sudo chmod +x scripts/*.sh
+sudo chmod +x ./scripts/*.sh
 ```
 
 3) Create virtual environments and install requirements
