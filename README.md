@@ -14,7 +14,7 @@ Two Flask services:
 ## First-time setup
 1) Make scripts executable
 ```
-chmod +x scripts/*.sh rviz_web/*.sh yolo_web/*.sh
+chmod +x scripts/*.sh
 ```
 
 2) Create virtual environments and install requirements
