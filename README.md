@@ -11,6 +11,29 @@ Two Flask services:
 - Camera available at `/dev/video0` (or adjust in code)
 - Internet access to install Python packages
 
+## Install Python 3.12 and Python 3.11 (Skip if installed)
+1) Install DeadSnakes PPA
+```
+sudo apt install software-properties-common
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+```
+2) Check which version(s) you haven't install yet
+```
+python3 --version
+```
+
+3) Install python version you don't have
+```
+sudo apt install python3.12
+sudo apt install python3.11
+```
+
+4) Verify installation
+```
+python3 --version
+```
+
 ## First-time setup
 1) Download package and cd into package
 ```
