@@ -7,3 +7,6 @@
 # Byte-compiled / cache
 __pycache__/
 *.py[cod]
+
+# Runtime PIDs
+*.pid

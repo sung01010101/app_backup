@@ -2,8 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+APP_DIR="$ROOT_DIR/rviz_web"
 PORT=5003
-PIDFILE="$SCRIPT_DIR/.rviz_web.pid"
+PIDFILE="$APP_DIR/.rviz_web.pid"
 
 kill_by_port() {
   local port="$1"

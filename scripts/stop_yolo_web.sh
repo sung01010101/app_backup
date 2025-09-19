@@ -2,8 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+APP_DIR="$ROOT_DIR/yolo_web"
 PORT=5004
-PIDFILE="$SCRIPT_DIR/.yolo_web.pid"
+PIDFILE="$APP_DIR/.yolo_web.pid"
 
 kill_by_port() {
   local port="$1"

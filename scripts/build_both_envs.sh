@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 declare -A PROJECTS=(
   ["rviz_web"]="3.12"
@@ -58,6 +58,7 @@ for proj in "${!PROJECTS[@]}"; do
 
   echo "Done: ${proj}. Activate with: source ${proj_dir}/${VENV_DIR}/bin/activate"
   echo
+
 done
 
 echo "All done."
