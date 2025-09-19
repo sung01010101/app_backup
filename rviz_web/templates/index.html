@@ -680,7 +680,7 @@
                 <label for="yoloToggle">Obstacle Detection:</label>
                 <button id="yoloToggleBtn" onclick="toggleYolo()">Enable</button>
                 <span id="yoloPortInput" style="display: none;">
-                    <input type="number" id="yoloPort" value="5001" min="1" max="65535" style="width: 80px;">
+                    <input type="number" id="yoloPort" value="5004" min="1" max="65535" style="width: 80px;">
                     <button onclick="connectYolo()">Connect</button>
                 </span>
             </div>
@@ -830,7 +830,7 @@
         // YOLO-related variables
         let yoloEnabled = false;
         let yoloConnected = false;
-        let yoloPort = 5001;
+        let yoloPort = 5004;
         let yoloVideoElement = null;
         let yoloCheckInterval = null;
         let detectionCount = 0;
@@ -2435,7 +2435,7 @@ function updateWaypointMarkers() {
         
         function connectYolo() {
             const portInput = document.getElementById('yoloPort');
-            yoloPort = parseInt(portInput.value) || 5001;
+            yoloPort = parseInt(portInput.value) || 5004;
             
             const videoContainer = document.getElementById('yoloVideoContainer');
             const statusDot = document.getElementById('yoloStatusDot');
