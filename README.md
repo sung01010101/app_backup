@@ -12,12 +12,18 @@ Two Flask services:
 - Internet access to install Python packages
 
 ## First-time setup
-1) Make scripts executable
+1) Download package and cd into package
+```
+git clone https://github.com/sung01010101/app_backup.git
+cd ./app_backup
+```
+
+2) Make scripts executable
 ```
 sudo chmod +x scripts/*.sh
 ```
 
-2) Create virtual environments and install requirements
+3) Create virtual environments and install requirements
 - Build both at once:
 ```
 ./scripts/build_both_envs.sh
@@ -28,7 +34,7 @@ sudo chmod +x scripts/*.sh
 ./scripts/build_yolo_env.sh
 ```
 
-3) (Optional) Verify Python versions
+4) (Optional) Verify Python versions
 ```
 rviz_web/.venv-py3.12/bin/python -V
 yolo_web/.venv-py3.11/bin/python -V
