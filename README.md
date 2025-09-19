@@ -44,10 +44,6 @@ Default port: 5004
 ```
 Open http://localhost:5004
 
-Note: rviz_web proxies YOLO video from http://localhost:5001 by default. To integrate seamlessly you can:
-- Change yolo_web to run on port 5001 (edit `app.py` or export a PORT variable if you add support), or
-- Keep yolo_web on 5004 and adjust the rviz_web code for the proxy URL (video proxy currently hard-coded to 5001).
-
 ### Start RVIZ web UI (rviz_web)
 Default port: 5003
 ```
